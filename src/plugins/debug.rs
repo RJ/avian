@@ -18,23 +18,20 @@ impl Plugin for PhysicsDebugPlugin {
                 ..default()
             })
             .register_type::<PhysicsDebugConfig>()
+            // render AABBs first, so collider shapes drawn over the top. Looks better.
             .add_systems(
                 PostUpdate,
-                debug_render_aabbs
-                    .run_if(|config: Res<PhysicsDebugConfig>| config.render_aabbs)
-                    .after(PhysicsSet::Sync),
-            )
-            .add_systems(
-                PostUpdate,
-                debug_render_colliders
-                    .run_if(|config: Res<PhysicsDebugConfig>| config.render_colliders)
-                    .after(PhysicsSet::Sync),
-            )
-            .add_systems(
-                PostUpdate,
-                debug_render_contacts
-                    .run_if(|config: Res<PhysicsDebugConfig>| config.render_contacts)
-                    .after(PhysicsSet::Sync),
+                (
+                    debug_render_aabbs
+                        .run_if(|config: Res<PhysicsDebugConfig>| config.render_aabbs)
+                        .after(PhysicsSet::Sync),
+                    debug_render_colliders
+                        .run_if(|config: Res<PhysicsDebugConfig>| config.render_colliders)
+                        .after(PhysicsSet::Sync),
+                    debug_render_contacts
+                        .run_if(|config: Res<PhysicsDebugConfig>| config.render_contacts)
+                        .after(PhysicsSet::Sync),
+                ).chain()
             );
     }
 }
@@ -64,30 +61,36 @@ impl Default for PhysicsDebugConfig {
 fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizmos) {
     for (col, transform) in cols.iter() {
         let shape = col.get_shape();
-        
+
+        if let Some(ball) = shape.as_ball() {
+            gizmos.circle_2d(transform.translation.truncate(), ball.radius, Color::WHITE);
+            continue;
+        }
         
         if let Some(poly) = shape.as_convex_polygon() {
-            // use translation
             let last_p = poly.points().last().unwrap();
             let mut start_p =  transform.transform_point(Vec3::new(last_p.x, last_p.y, 0.0)).truncate();
-            bevy::log::info!("start_p {:?}", start_p);
             for i in 0..poly.points().len() {
                 let p = poly.points()[i];
                 let tmp = transform.transform_point(Vec3::new(p.x, p.y, 0.0)).truncate();
                 gizmos.line_2d(start_p, tmp, Color::WHITE);
                 start_p = tmp;
             }
-
             continue;
         }
 
-        bevy::log::error!("Only convex polygons are renderable by the PhysicsDebug plugin for now.");
-
         if let Some(cuboid) = shape.as_cuboid() {
+            let points: Vec<Vec3> = cuboid.to_polyline().into_iter().map(|p| Vec3::new(p.x, p.y, 0.0)).collect();
+            let mut start_p = transform.transform_point(*points.last().unwrap());
+            for i in 0..points.len() {
+                let tmp = transform.transform_point(points[i]);
+                gizmos.line_2d(start_p.truncate(), tmp.truncate(), Color::WHITE);
+                start_p = tmp;
+            }
+            continue;
         }
-    
-        if let Some(ball) = shape.as_ball() {
-        }
+
+        bevy::log::warn!("Can only render colliders for balls, cuboids, and polys at the mo.");
     }
 }
 
@@ -97,7 +100,7 @@ fn debug_render_aabbs(aabbs: Query<&ColliderAabb>, mut gizmos: Gizmos) {
         gizmos.cuboid(
             Transform::from_scale(Vector::from(aabb.extents()).extend(0.0).as_f32())
                 .with_translation(Vector::from(aabb.center()).extend(0.0).as_f32()),
-            Color::WHITE,
+            Color::GRAY,
         );
     }
 
@@ -106,7 +109,7 @@ fn debug_render_aabbs(aabbs: Query<&ColliderAabb>, mut gizmos: Gizmos) {
         gizmos.cuboid(
             Transform::from_scale(Vector::from(aabb.extents()).as_f32())
                 .with_translation(Vector::from(aabb.center()).as_f32()),
-            Color::WHITE,
+            Color::GRAY,
         );
     }
 }
