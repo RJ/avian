@@ -26,6 +26,12 @@ impl Plugin for PhysicsDebugPlugin {
             )
             .add_systems(
                 PostUpdate,
+                debug_render_colliders
+                    .run_if(|config: Res<PhysicsDebugConfig>| config.render_colliders)
+                    .after(PhysicsSet::Sync),
+            )
+            .add_systems(
+                PostUpdate,
                 debug_render_contacts
                     .run_if(|config: Res<PhysicsDebugConfig>| config.render_contacts)
                     .after(PhysicsSet::Sync),
@@ -41,6 +47,8 @@ pub struct PhysicsDebugConfig {
     pub render_aabbs: bool,
     /// Renders contact points.
     pub render_contacts: bool,
+    /// Renders collider shapes
+    pub render_colliders: bool,
 }
 
 impl Default for PhysicsDebugConfig {
@@ -48,6 +56,37 @@ impl Default for PhysicsDebugConfig {
         Self {
             render_aabbs: true,
             render_contacts: true,
+            render_colliders: true,
+        }
+    }
+}
+
+fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizmos) {
+    for (col, transform) in cols.iter() {
+        let shape = col.get_shape();
+        
+        
+        if let Some(poly) = shape.as_convex_polygon() {
+            // use translation
+            let last_p = poly.points().last().unwrap();
+            let mut start_p =  transform.transform_point(Vec3::new(last_p.x, last_p.y, 0.0)).truncate();
+            bevy::log::info!("start_p {:?}", start_p);
+            for i in 0..poly.points().len() {
+                let p = poly.points()[i];
+                let tmp = transform.transform_point(Vec3::new(p.x, p.y, 0.0)).truncate();
+                gizmos.line_2d(start_p, tmp, Color::WHITE);
+                start_p = tmp;
+            }
+
+            continue;
+        }
+
+        bevy::log::error!("Only convex polygons are renderable by the PhysicsDebug plugin for now.");
+
+        if let Some(cuboid) = shape.as_cuboid() {
+        }
+    
+        if let Some(ball) = shape.as_ball() {
         }
     }
 }
