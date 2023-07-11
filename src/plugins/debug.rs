@@ -58,8 +58,8 @@ impl Default for PhysicsDebugConfig {
     }
 }
 
-fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizmos) {
-    for (col, transform) in cols.iter() {
+fn debug_render_colliders(cols: Query<(&Collider, &Transform, &Position, &Rotation)>, mut gizmos: Gizmos) {
+    for (col, transform, pos, rot) in cols.iter() {
         let shape = col.get_shape();
 
         // render a "+" at center of collider
@@ -110,9 +110,14 @@ fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizm
         }
 
         if let Some(triangle) = shape.as_triangle() {
-            let p1 = transform.transform_point(Vec3::new(triangle.a[0], triangle.a[1], 0.0)).truncate();
-            let p2 = transform.transform_point(Vec3::new(triangle.b[0], triangle.b[1], 0.0)).truncate();
-            let p3 = transform.transform_point(Vec3::new(triangle.c[0], triangle.c[1], 0.0)).truncate();
+            // let p1 = transform.transform_point(Vec3::new(triangle.a[0], triangle.a[1], 0.0)).truncate();
+            // let p2 = transform.transform_point(Vec3::new(triangle.b[0], triangle.b[1], 0.0)).truncate();
+            // let p3 = transform.transform_point(Vec3::new(triangle.c[0], triangle.c[1], 0.0)).truncate();
+
+            let p1 = pos.0 + rot.rotate(Vec2::new(triangle.a[0], triangle.a[1]));
+            let p2 = pos.0 + rot.rotate(Vec2::new(triangle.b[0], triangle.b[1]));
+            let p3 = pos.0 + rot.rotate(Vec2::new(triangle.c[0], triangle.c[1]));
+
             gizmos.line_2d(p1, p2, Color::WHITE);
             gizmos.line_2d(p2, p3, Color::WHITE);
             gizmos.line_2d(p3, p1, Color::WHITE);
