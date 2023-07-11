@@ -78,6 +78,32 @@ fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizm
 
         // render the collider shape
 
+        if let Some(cap) = shape.as_capsule() {
+            let hh = cap.half_height();
+            let rad = cap.radius;
+
+            // the two lines making the straight edges of the capsule
+            let left_side_top       = transform.transform_point(Vec3::new(-rad, hh, 0.0)).truncate();
+            let left_side_bottom    = transform.transform_point(Vec3::new(-rad, -hh, 0.0)).truncate();
+            let right_side_top      = transform.transform_point(Vec3::new(rad, hh, 0.0)).truncate();
+            let right_side_bottom   = transform.transform_point(Vec3::new(rad, -hh, 0.0)).truncate();
+
+            gizmos.line_2d(left_side_top, left_side_bottom, Color::WHITE);
+            gizmos.line_2d(right_side_top, right_side_bottom, Color::WHITE);
+
+            // the midpoints of the two half-circles at the ends of the capsule
+            let top_arc_centre      = transform.transform_point(Vec3::new(0.0, hh, 0.0)).truncate();
+            let bottom_arc_centre   = transform.transform_point(Vec3::new(0.0, -hh, 0.0)).truncate();
+
+            let (axis, mut angle) = transform.rotation.to_axis_angle();
+            angle *= -axis.z; // not 100% sure why I needed this, required a bit of trial and error.
+
+            gizmos.arc_2d(top_arc_centre, angle, PI, rad, Color::WHITE);
+            gizmos.arc_2d(bottom_arc_centre, angle + PI, PI, rad, Color::WHITE);
+
+            continue;
+        }
+
         if let Some(ball) = shape.as_ball() {
             gizmos.circle_2d(transform.translation.truncate(), ball.radius, Color::WHITE);
             continue;
@@ -116,7 +142,7 @@ fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizm
             continue;
         }
 
-        bevy::log::warn!("Can only render colliders for balls, cuboids, and polys at the mo.");
+        bevy::log::warn!("Can't render colliders for this shape");
     }
 }
 
