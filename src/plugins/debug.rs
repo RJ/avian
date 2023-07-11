@@ -62,8 +62,34 @@ fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizm
     for (col, transform) in cols.iter() {
         let shape = col.get_shape();
 
+        // render a "+" at center of collider
+        //    a
+        //    |
+        //d -   - b
+        //    |
+        //    c
+        let x_sz = 3.0; // length of arm of cross at center
+        let a = transform.transform_point(Vec3::new(0.0, x_sz, 0.0)).truncate();
+        let b = transform.transform_point(Vec3::new(x_sz, 0.0, 0.0)).truncate();
+        let c = transform.transform_point(Vec3::new(0.0, -x_sz, 0.0)).truncate();
+        let d = transform.transform_point(Vec3::new(-x_sz, 0.0, 0.0)).truncate();
+        gizmos.line_2d(a, c, Color::GRAY);
+        gizmos.line_2d(b, d, Color::GRAY);
+
+        // render the collider shape
+
         if let Some(ball) = shape.as_ball() {
             gizmos.circle_2d(transform.translation.truncate(), ball.radius, Color::WHITE);
+            continue;
+        }
+
+        if let Some(triangle) = shape.as_triangle() {
+            let p1 = transform.transform_point(Vec3::new(triangle.a[0], triangle.a[1], 0.0)).truncate();
+            let p2 = transform.transform_point(Vec3::new(triangle.b[0], triangle.b[1], 0.0)).truncate();
+            let p3 = transform.transform_point(Vec3::new(triangle.c[0], triangle.c[1], 0.0)).truncate();
+            gizmos.line_2d(p1, p2, Color::WHITE);
+            gizmos.line_2d(p2, p3, Color::WHITE);
+            gizmos.line_2d(p3, p1, Color::WHITE);
             continue;
         }
         
