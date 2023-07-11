@@ -58,8 +58,8 @@ impl Default for PhysicsDebugConfig {
     }
 }
 
-fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizmos) {
-    for (col, transform) in cols.iter() {
+fn debug_render_colliders(cols: Query<(&Collider, &Transform, &Position, &Rotation)>, mut gizmos: Gizmos) {
+    for (col, transform, pos, rot) in cols.iter() {
         let shape = col.get_shape();
 
         // render a "+" at center of collider
@@ -110,9 +110,10 @@ fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizm
         }
 
         if let Some(triangle) = shape.as_triangle() {
-            let p1 = transform.transform_point(Vec3::new(triangle.a[0], triangle.a[1], 0.0)).truncate();
-            let p2 = transform.transform_point(Vec3::new(triangle.b[0], triangle.b[1], 0.0)).truncate();
-            let p3 = transform.transform_point(Vec3::new(triangle.c[0], triangle.c[1], 0.0)).truncate();
+            let p1 = pos.0 + rot.rotate(Vec2::new(triangle.a[0], triangle.a[1]));
+            let p2 = pos.0 + rot.rotate(Vec2::new(triangle.b[0], triangle.b[1]));
+            let p3 = pos.0 + rot.rotate(Vec2::new(triangle.c[0], triangle.c[1]));
+
             gizmos.line_2d(p1, p2, Color::WHITE);
             gizmos.line_2d(p2, p3, Color::WHITE);
             gizmos.line_2d(p3, p1, Color::WHITE);
@@ -121,10 +122,10 @@ fn debug_render_colliders(cols: Query<(&Collider, &Transform)>, mut gizmos: Gizm
         
         if let Some(poly) = shape.as_convex_polygon() {
             let last_p = poly.points().last().unwrap();
-            let mut start_p =  transform.transform_point(Vec3::new(last_p.x, last_p.y, 0.0)).truncate();
+            let mut start_p =  pos.0 + rot.rotate(Vec2::new(last_p.x, last_p.y));
             for i in 0..poly.points().len() {
                 let p = poly.points()[i];
-                let tmp = transform.transform_point(Vec3::new(p.x, p.y, 0.0)).truncate();
+                let tmp = pos.0 + rot.rotate(Vec2::new(p.x, p.y));
                 gizmos.line_2d(start_p, tmp, Color::WHITE);
                 start_p = tmp;
             }
